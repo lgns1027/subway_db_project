@@ -51,10 +51,10 @@ def query_fast_exit(conn):
         l.line_name AS '호선',
         ft.facility_type_name AS '이동설비',
         fe.direction AS '운행방향',
-        COALESCE(fe.destination_info, '-') AS '방면',
+        fe.destination_info AS '방면',
         fe.car_door_no AS '하차 칸-문',
-        COALESCE(fe.location_name, '-') AS '설비 위치명',
-        COALESCE(fe.facility_location, '-') AS '상세 위치 설명'
+        fe.location_name AS '설비 위치명',
+        fe.facility_location AS '상세 위치 설명'
     FROM FAST_EXIT fe
     JOIN LINE_STATION ls ON fe.station_cd = ls.station_cd
     JOIN STATION s ON ls.station_id = s.station_id
@@ -109,7 +109,7 @@ def query_congestion(conn):
         l.line_name AS '호선',
         c.day_type AS '요일',
         c.direction AS '방향',
-        LEFT(c.time_start, 5) AS '시간대',
+        c.time_start AS '시간대',
         c.congestion_rate AS '혼잡도'
     FROM CONGESTION c
     JOIN LINE_STATION ls ON c.station_cd = ls.station_cd
@@ -139,9 +139,9 @@ def query_congestion(conn):
     least_congested = sorted_rows[:3]
     most_congested = sorted_rows[-1]
 
-    least_times = ", ".join([f"{r[4]} ({r[5]}%)" for r in least_congested])
+    least_times = ", ".join([f"{str(r[4])[:5]} ({r[5]}%)" for r in least_congested])
     print(f"\n- 최저 혼잡 시간대 TOP 3: {least_times}")
-    print(f"- 최고 혼잡 시간대: {most_congested[4]} ({most_congested[5]}%)")
+    print(f"- 최고 혼잡 시간대: {str(most_congested[4])[:5]} ({most_congested[5]}%)")
 
 
 # 3. 노선 및 기간별 역 승하차 이용객 집계
@@ -158,12 +158,11 @@ def query_ridership(conn):
 
     sql = f"""
     SELECT 
-        DENSE_RANK() OVER (ORDER BY SUM(r.boarding_count + r.alighting_count) DESC) AS '순위',
         s.station_name AS '역명',
         l.line_name AS '호선',
-        FORMAT(SUM(r.boarding_count), 0) AS '총 승차인원',
-        FORMAT(SUM(r.alighting_count), 0) AS '총 하차인원',
-        FORMAT(SUM(r.boarding_count + r.alighting_count), 0) AS '총 이용객 합계'
+        SUM(r.boarding_count) AS '총 승차인원',
+        SUM(r.alighting_count) AS '총 하차인원',
+        SUM(r.boarding_count + r.alighting_count) AS '총 이용객 합계'
     FROM RIDERSHIP r
     JOIN LINE_STATION ls ON r.station_cd = ls.station_cd
     JOIN STATION s ON ls.station_id = s.station_id
@@ -203,14 +202,13 @@ def query_transfer_station(conn):
     sql = f"""
     SELECT 
         s.station_name AS '역명',
-        COUNT(ls.line_code) AS '경유 노선 수',
-        GROUP_CONCAT(l.line_name ORDER BY l.line_name SEPARATOR ', ') AS '경유 노선 목록',
-        GROUP_CONCAT(CONCAT(l.line_name, '(', ls.station_cd, ')') ORDER BY l.line_name SEPARATOR ', ') AS '노선별 전철역코드'
+        l.line_name AS '경유 호선',
+        ls.station_cd AS '전철역코드'
     FROM STATION s
     JOIN LINE_STATION ls ON s.station_id = ls.station_id
     JOIN LINE l ON ls.line_code = l.line_code
     WHERE s.station_name = '{station_name}'
-    GROUP BY s.station_id, s.station_name;
+    ORDER BY l.line_name;
     """
 
     cursor = conn.cursor()
@@ -239,15 +237,16 @@ def query_elevator_infra(conn):
     SELECT 
         s.station_name AS '역명',
         l.line_name AS '호선',
-        COUNT(CASE WHEN ft.facility_type_name = '엘리베이터' THEN fe.management_no END) AS '엘리베이터 연결 칸 수'
+        COUNT(fe.management_no) AS '엘리베이터 설치 칸 수'
     FROM LINE_STATION ls
     JOIN STATION s ON ls.station_id = s.station_id
     JOIN LINE l ON ls.line_code = l.line_code
-    LEFT JOIN FAST_EXIT fe ON ls.station_cd = fe.station_cd
-    LEFT JOIN FACILITY_TYPE ft ON fe.facility_type_id = ft.facility_type_id
+    JOIN FAST_EXIT fe ON ls.station_cd = fe.station_cd
+    JOIN FACILITY_TYPE ft ON fe.facility_type_id = ft.facility_type_id
     WHERE l.line_name = '{line_name}'
+      AND ft.facility_type_name = '엘리베이터'
     GROUP BY s.station_id, s.station_name, l.line_name
-    ORDER BY `엘리베이터 연결 칸 수` ASC, s.station_name ASC;
+    ORDER BY COUNT(fe.management_no) DESC;
     """
 
     cursor = conn.cursor()
@@ -263,10 +262,6 @@ def query_elevator_infra(conn):
     print(f"\n[{line_name}] 역별 엘리베이터 연결 현황:\n")
     print(tabulate(rows, headers=headers, tablefmt="fancy_grid", stralign="center"))
 
-    zero_stations = [r[0] for r in rows if r[2] == 0]
-    if zero_stations:
-        print(f"\n- 엘리베이터 연결 칸 데이터가 없는 역: {', '.join(zero_stations)}")
-
 
 # 6. 특정 시간대 노선 내 혼잡 역 순위
 def query_rush_hour_congestion(conn):
@@ -281,11 +276,10 @@ def query_rush_hour_congestion(conn):
 
     sql = f"""
     SELECT 
-        DENSE_RANK() OVER (ORDER BY c.congestion_rate DESC) AS '혼잡 순위',
         s.station_name AS '역명',
         l.line_name AS '호선',
         c.direction AS '운행방향',
-        LEFT(c.time_start, 5) AS '시간대',
+        c.time_start AS '시간대',
         c.congestion_rate AS '혼잡도'
     FROM CONGESTION c
     JOIN LINE_STATION ls ON c.station_cd = ls.station_cd

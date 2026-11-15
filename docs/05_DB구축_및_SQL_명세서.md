@@ -84,9 +84,9 @@ JOIN LINE_STATION ls ON fe.station_cd = ls.station_cd
 JOIN STATION s ON ls.station_id = s.station_id
 JOIN LINE l ON ls.line_code = l.line_code
 JOIN FACILITY_TYPE ft ON fe.facility_type_id = ft.facility_type_id
-WHERE s.station_name = %s
-  AND l.line_name = %s
-  AND ft.facility_type_name = %s
+WHERE s.station_name = '서울역'
+  AND l.line_name = '1호선'
+  AND ft.facility_type_name = '엘리베이터'
 ORDER BY fe.direction, fe.car_door_no;
 ```
 
@@ -99,85 +99,94 @@ SELECT
     l.line_name AS '호선',
     c.day_type AS '요일',
     c.direction AS '방향',
-    TIME_FORMAT(c.time_start, '%H:%i') AS '시간대',
-    c.congestion_rate AS '혼잡도(%)'
+    c.time_start AS '시간대',
+    c.congestion_rate AS '혼잡도'
 FROM CONGESTION c
 JOIN LINE_STATION ls ON c.station_cd = ls.station_cd
 JOIN STATION s ON ls.station_id = s.station_id
 JOIN LINE l ON ls.line_code = l.line_code
-WHERE s.station_name = %s
-  AND l.line_name = %s
-  AND c.day_type = %s
-  AND c.direction = %s
+WHERE s.station_name = '한성대입구'
+  AND l.line_name = '4호선'
+  AND c.day_type = '평일'
+  AND c.direction = '상선'
 ORDER BY c.time_start ASC;
 ```
 
-### 4.3 노선 및 기간별 역 승하차 집계 및 순위 (GROUP BY, RANK)
-- 지정 기간 동안 노선 내 역별 승하차 인원을 합산하고 `DENSE_RANK()`를 통해 순위를 도출한다.
+### 4.3 노선 및 기간별 역 승하차 집계 및 정렬 (GROUP BY, SUM)
+- 지정 기간 동안 노선 내 역별 승하차 인원을 합산하고 내림차순 정렬하여 상위 역을 도출한다.
 
 ```sql
 SELECT 
-    DENSE_RANK() OVER (ORDER BY SUM(r.boarding_count + r.alighting_count) DESC) AS '순위',
     s.station_name AS '역명',
     l.line_name AS '호선',
-    FORMAT(SUM(r.boarding_count), 0) AS '총 승차인원',
-    FORMAT(SUM(r.alighting_count), 0) AS '총 하차인원',
-    FORMAT(SUM(r.boarding_count + r.alighting_count), 0) AS '총 이용객 합계'
+    SUM(r.boarding_count) AS '총 승차인원',
+    SUM(r.alighting_count) AS '총 하차인원',
+    SUM(r.boarding_count + r.alighting_count) AS '총 이용객 합계'
 FROM RIDERSHIP r
 JOIN LINE_STATION ls ON r.station_cd = ls.station_cd
 JOIN STATION s ON ls.station_id = s.station_id
 JOIN LINE l ON ls.line_code = l.line_code
-WHERE l.line_name = %s
-  AND r.transport_date BETWEEN %s AND %s
+WHERE l.line_name = '2호선'
+  AND r.transport_date BETWEEN '2025-12-01' AND '2025-12-07'
 GROUP BY s.station_id, s.station_name, l.line_name
 ORDER BY SUM(r.boarding_count + r.alighting_count) DESC
-LIMIT %s;
+LIMIT 10;
 ```
 
-### 4.4 환승역 종합 정보 조회 (M:N 교차 엔터티 검증, GROUP_CONCAT)
-- 특정 역을 지나는 노선 수와 경유 노선 목록, 노선별 코드를 문자열로 집계하여 조회한다.
+### 4.4 환승역 정보 조회 (M:N 교차 릴레이션 검증)
+- 특정 역을 경유하는 노선 목록과 노선별 전철역 코드를 조회한다.
 
 ```sql
 SELECT 
     s.station_name AS '역명',
-    COUNT(ls.line_code) AS '경유 노선 수',
-    GROUP_CONCAT(l.line_name ORDER BY l.line_name SEPARATOR ', ') AS '경유 노선 목록',
-    GROUP_CONCAT(CONCAT(l.line_name, '(', ls.station_cd, ')') ORDER BY l.line_name SEPARATOR ', ') AS '노선별 전철역코드'
+    l.line_name AS '경유 호선',
+    ls.station_cd AS '전철역코드'
 FROM STATION s
 JOIN LINE_STATION ls ON s.station_id = ls.station_id
 JOIN LINE l ON ls.line_code = l.line_code
-WHERE s.station_name = %s
-GROUP BY s.station_id, s.station_name;
+WHERE s.station_name = '서울역'
+ORDER BY l.line_name;
 ```
 
-### 4.5 노선별 엘리베이터 인프라 현황 (LEFT JOIN)
-- `LEFT JOIN`을 사용하여 특정 노선에서 엘리베이터 연결 칸 수가 0개인 역을 포함해 전체 역을 집계한다.
+### 4.5 노선별 엘리베이터 설치 현황 (JOIN, COUNT)
+- 특정 노선에서 엘리베이터가 설치된 역과 설치 칸 수를 집계한다.
 
 ```sql
 SELECT 
     s.station_name AS '역명',
     l.line_name AS '호선',
-    COUNT(CASE WHEN ft.facility_type_name = '엘리베이터' THEN fe.management_no END) AS '엘리베이터 연결 칸 수'
+    COUNT(fe.management_no) AS '엘리베이터 설치 칸 수'
 FROM LINE_STATION ls
 JOIN STATION s ON ls.station_id = s.station_id
 JOIN LINE l ON ls.line_code = l.line_code
-LEFT JOIN FAST_EXIT fe ON ls.station_cd = fe.station_cd
-LEFT JOIN FACILITY_TYPE ft ON fe.facility_type_id = ft.facility_type_id
-WHERE l.line_name = %s
+JOIN FAST_EXIT fe ON ls.station_cd = fe.station_cd
+JOIN FACILITY_TYPE ft ON fe.facility_type_id = ft.facility_type_id
+WHERE l.line_name = '4호선'
+  AND ft.facility_type_name = '엘리베이터'
 GROUP BY s.station_id, s.station_name, l.line_name
-ORDER BY `엘리베이터 연결 칸 수` ASC, s.station_name ASC;
+ORDER BY COUNT(fe.management_no) DESC;
 ```
 
-### 4.6 특정 시간대 노선 내 최고 혼잡 역 순위
+### 4.6 특정 시간대 노선 내 혼잡 역 순위 (ORDER BY DESC, LIMIT)
 - 특정 시간대에 노선 내 역들의 혼잡도를 내림차순 정렬하여 상위 10개 역을 도출한다.
 
 ```sql
 SELECT 
-    DENSE_RANK() OVER (ORDER BY c.congestion_rate DESC) AS '혼잡 순위',
     s.station_name AS '역명',
     l.line_name AS '호선',
     c.direction AS '운행방향',
-    TIME_FORMAT(c.time_start, '%H:%i') AS '시간대',
+    c.time_start AS '시간대',
+    c.congestion_rate AS '혼잡도'
+FROM CONGESTION c
+JOIN LINE_STATION ls ON c.station_cd = ls.station_cd
+JOIN STATION s ON ls.station_id = s.station_id
+JOIN LINE l ON ls.line_code = l.line_code
+WHERE l.line_name = '2호선'
+  AND c.day_type = '평일'
+  AND c.time_start = '08:30:00'
+ORDER BY c.congestion_rate DESC
+LIMIT 10;
+```
     c.congestion_rate AS '혼잡도(%)'
 FROM CONGESTION c
 JOIN LINE_STATION ls ON c.station_cd = ls.station_cd

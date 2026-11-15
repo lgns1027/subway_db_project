@@ -37,16 +37,16 @@ SELECT
     l.line_name AS '호선',
     c.day_type AS '요일',
     c.direction AS '방향',
-    TIME_FORMAT(c.time_start, '%H:%i') AS '시간대',
-    c.congestion_rate AS '혼잡도(%)'
+    c.time_start AS '시간대',
+    c.congestion_rate AS '혼잡도'
 FROM CONGESTION c
 JOIN LINE_STATION ls ON c.station_cd = ls.station_cd
 JOIN STATION s ON ls.station_id = s.station_id
 JOIN LINE l ON ls.line_code = l.line_code
-WHERE s.station_name = '강남'
-  AND l.line_name = '2호선'
+WHERE s.station_name = '한성대입구'
+  AND l.line_name = '4호선'
   AND c.day_type = '평일'
-  AND c.direction = '내선'
+  AND c.direction = '상선'
 ORDER BY c.time_start ASC;
 
 
@@ -55,12 +55,11 @@ ORDER BY c.time_start ASC;
 -- 조건: 호선, 기간(수송일자 범위)
 -- ---------------------------------------------------------------------
 SELECT 
-    DENSE_RANK() OVER (ORDER BY SUM(r.boarding_count + r.alighting_count) DESC) AS '순위',
     s.station_name AS '역명',
     l.line_name AS '호선',
-    FORMAT(SUM(r.boarding_count), 0) AS '총 승차인원',
-    FORMAT(SUM(r.alighting_count), 0) AS '총 하차인원',
-    FORMAT(SUM(r.boarding_count + r.alighting_count), 0) AS '총 이용객 합계'
+    SUM(r.boarding_count) AS '총 승차인원',
+    SUM(r.alighting_count) AS '총 하차인원',
+    SUM(r.boarding_count + r.alighting_count) AS '총 이용객 합계'
 FROM RIDERSHIP r
 JOIN LINE_STATION ls ON r.station_cd = ls.station_cd
 JOIN STATION s ON ls.station_id = s.station_id
@@ -78,14 +77,13 @@ LIMIT 10;
 -- ---------------------------------------------------------------------
 SELECT 
     s.station_name AS '역명',
-    COUNT(ls.line_code) AS '경유 노선 수',
-    GROUP_CONCAT(l.line_name ORDER BY l.line_name SEPARATOR ', ') AS '경유 노선 목록',
-    GROUP_CONCAT(CONCAT(l.line_name, '(', ls.station_cd, ')') ORDER BY l.line_name SEPARATOR ', ') AS '노선별 전철역코드'
+    l.line_name AS '경유 호선',
+    ls.station_cd AS '전철역코드'
 FROM STATION s
 JOIN LINE_STATION ls ON s.station_id = ls.station_id
 JOIN LINE l ON ls.line_code = l.line_code
-WHERE s.station_name = '동대문역사문화공원'
-GROUP BY s.station_id, s.station_name;
+WHERE s.station_name = '서울역'
+ORDER BY l.line_name;
 
 
 -- ---------------------------------------------------------------------
@@ -95,15 +93,16 @@ GROUP BY s.station_id, s.station_name;
 SELECT 
     s.station_name AS '역명',
     l.line_name AS '호선',
-    COUNT(CASE WHEN ft.facility_type_name = '엘리베이터' THEN fe.management_no END) AS '엘리베이터 연결 칸 수'
+    COUNT(fe.management_no) AS '엘리베이터 설치 칸 수'
 FROM LINE_STATION ls
 JOIN STATION s ON ls.station_id = s.station_id
 JOIN LINE l ON ls.line_code = l.line_code
-LEFT JOIN FAST_EXIT fe ON ls.station_cd = fe.station_cd
-LEFT JOIN FACILITY_TYPE ft ON fe.facility_type_id = ft.facility_type_id
-WHERE l.line_name = '7호선'
+JOIN FAST_EXIT fe ON ls.station_cd = fe.station_cd
+JOIN FACILITY_TYPE ft ON fe.facility_type_id = ft.facility_type_id
+WHERE l.line_name = '4호선'
+  AND ft.facility_type_name = '엘리베이터'
 GROUP BY s.station_id, s.station_name, l.line_name
-ORDER BY `엘리베이터 연결 칸 수` ASC, s.station_name ASC;
+ORDER BY COUNT(fe.management_no) DESC;
 
 
 -- ---------------------------------------------------------------------
@@ -111,12 +110,11 @@ ORDER BY `엘리베이터 연결 칸 수` ASC, s.station_name ASC;
 -- 조건: 호선, 요일, 시간대
 -- ---------------------------------------------------------------------
 SELECT 
-    DENSE_RANK() OVER (ORDER BY c.congestion_rate DESC) AS '혼잡 순위',
     s.station_name AS '역명',
     l.line_name AS '호선',
     c.direction AS '운행방향',
-    TIME_FORMAT(c.time_start, '%H:%i') AS '시간대',
-    c.congestion_rate AS '혼잡도(%)'
+    c.time_start AS '시간대',
+    c.congestion_rate AS '혼잡도'
 FROM CONGESTION c
 JOIN LINE_STATION ls ON c.station_cd = ls.station_cd
 JOIN STATION s ON ls.station_id = s.station_id
