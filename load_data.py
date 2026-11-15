@@ -1,41 +1,35 @@
-"""
-load_data.py
-전처리된 지하철 데이터를 MySQL subway_db 데이터베이스에 적재하는 스크립트.
-"""
-
 import os
-import re
 import pymysql
 import pandas as pd
 
-CLEAN_DIR = os.path.join("데이터 전처리", "데이터 전처리", "clean")
-
-# MySQL 연결 설정
-DB_CONFIG = {
-    "host": "localhost",
-    "user": "root",
-    "password": "0000",
-    "database": "subway_db",
-    "charset": "utf8mb4",
-    "autocommit": False
-}
+if os.path.exists(os.path.join("데이터 전처리", "clean")):
+    CLEAN_DIR = os.path.join("데이터 전처리", "clean")
+else:
+    CLEAN_DIR = os.path.join("데이터 전처리", "데이터 전처리", "clean")
 
 
 def norm_line_name(line_str):
-    m = re.search(r"\d+", str(line_str))
-    return f"{int(m.group())}호선" if m else str(line_str)
+    s = str(line_str).strip()
+    if s.endswith("호선"):
+        num = s.replace("호선", "").lstrip("0")
+        return num + "호선"
+    return s.lstrip("0") + "호선"
 
 
 def main():
-    conn = pymysql.connect(**DB_CONFIG)
+    conn = pymysql.connect(
+        host="localhost",
+        user="root",
+        password="0000",
+        database="subway_db",
+        charset="utf8mb4"
+    )
     cursor = conn.cursor()
 
     try:
-        # 외래키 체크 해제 및 기존 데이터 정리
-        cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
+        # 기존 데이터 초기화 (자식 테이블부터 순서대로 삭제)
         for table in ["RIDERSHIP", "CONGESTION", "FAST_EXIT", "FACILITY_TYPE", "LINE_STATION", "STATION", "LINE"]:
-            cursor.execute(f"TRUNCATE TABLE {table};")
-        cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
+            cursor.execute(f"DELETE FROM {table};")
         conn.commit()
 
         # 1. LINE 테이블 적재
@@ -137,6 +131,7 @@ def main():
             rate = float(row["혼잡도"])
             cng_records.append((stn_cd, day_type, direction, time_str, rate))
 
+        # 5,000건 단위 분할 적재
         batch_size = 5000
         for i in range(0, len(cng_records), batch_size):
             batch = cng_records[i:i + batch_size]
@@ -160,6 +155,7 @@ def main():
             a_cnt = int(row["하차인원"])
             ride_records.append((stn_cd, t_date, t_slot, b_cnt, a_cnt))
 
+        # 10,000건 단위 분할 적재
         batch_size = 10000
         for i in range(0, len(ride_records), batch_size):
             batch = ride_records[i:i + batch_size]
@@ -170,17 +166,11 @@ def main():
             )
             conn.commit()
 
-        # 적재 결과 확인
-        print("데이터 적재 완료:")
-        for table in ["LINE", "STATION", "LINE_STATION", "FACILITY_TYPE", "FAST_EXIT", "CONGESTION", "RIDERSHIP"]:
-            cursor.execute(f"SELECT COUNT(*) FROM {table};")
-            cnt = cursor.fetchone()[0]
-            print(f"  - {table}: {cnt:,}건")
+        print("데이터 적재 완료")
 
     except Exception as e:
         conn.rollback()
-        print(f"적재 중 오류 발생: {e}")
-        raise e
+        print(f"적재 중 오류: {e}")
     finally:
         cursor.close()
         conn.close()

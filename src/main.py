@@ -5,10 +5,9 @@ from db import get_connection
 
 def select_line():
     num = input("\n[호선 선택] 1 ~ 8 사이의 숫자를 입력하세요 (예: 2 -> 2호선): ").strip()
-    digits = "".join(filter(str.isdigit, num))
-    if digits:
-        return f"{int(digits)}호선"
-    return num
+    if num.endswith("호선"):
+        return num
+    return num + "호선"
 
 
 def select_facility():
@@ -17,8 +16,12 @@ def select_facility():
     print("  2. 에스컬레이터")
     print("  3. 계단")
     choice = input("선택 (1/2/3, 엔터시 1): ").strip()
-    mapping = {"1": "엘리베이터", "2": "에스컬레이터", "3": "계단"}
-    return mapping.get(choice, "엘리베이터")
+    if choice == "2":
+        return "에스컬레이터"
+    elif choice == "3":
+        return "계단"
+    else:
+        return "엘리베이터"
 
 
 def select_day_type():
@@ -27,8 +30,12 @@ def select_day_type():
     print("  2. 토요일")
     print("  3. 일요일")
     choice = input("선택 (1/2/3, 엔터시 1): ").strip()
-    mapping = {"1": "평일", "2": "토요일", "3": "일요일"}
-    return mapping.get(choice, "평일")
+    if choice == "2":
+        return "토요일"
+    elif choice == "3":
+        return "일요일"
+    else:
+        return "평일"
 
 
 # 1. 빠른하차 위치 안내
@@ -99,9 +106,15 @@ def query_congestion(conn):
     print("  2. 하행 / 외선")
     dir_choice = input("선택 (1/2, 엔터시 1): ").strip()
     if line_name == "2호선":
-        direction = "외선" if dir_choice == "2" else "내선"
+        if dir_choice == "2":
+            direction = "외선"
+        else:
+            direction = "내선"
     else:
-        direction = "하선" if dir_choice == "2" else "상선"
+        if dir_choice == "2":
+            direction = "하선"
+        else:
+            direction = "상선"
 
     sql = f"""
     SELECT 
@@ -135,13 +148,17 @@ def query_congestion(conn):
     print(f"\n[{station_name}역 {line_name} ({day_type} / {direction})] 30분 단위 혼잡도 (단위: %):\n")
     print(tabulate(rows, headers=headers, tablefmt="fancy_grid", stralign="center"))
 
-    sorted_rows = sorted(rows, key=lambda x: x[5])
-    least_congested = sorted_rows[:3]
-    most_congested = sorted_rows[-1]
+    # 가장 한산한 시간과 가장 혼잡한 시간 찾기 (기본 for문 비교)
+    min_row = rows[0]
+    max_row = rows[0]
+    for r in rows:
+        if r[5] < min_row[5]:
+            min_row = r
+        if r[5] > max_row[5]:
+            max_row = r
 
-    least_times = ", ".join([f"{str(r[4])[:5]} ({r[5]}%)" for r in least_congested])
-    print(f"\n- 최저 혼잡 시간대 TOP 3: {least_times}")
-    print(f"- 최고 혼잡 시간대: {str(most_congested[4])[:5]} ({most_congested[5]}%)")
+    print(f"\n- 최저 혼잡 시간대: {str(min_row[4])[:5]} ({min_row[5]}%)")
+    print(f"- 최고 혼잡 시간대: {str(max_row[4])[:5]} ({max_row[5]}%)")
 
 
 # 3. 노선 및 기간별 역 승하차 이용객 집계
@@ -151,10 +168,19 @@ def query_ridership(conn):
     print("=" * 60)
 
     line_name = select_line()
-    start_date = input("조회 시작일자 (YYYY-MM-DD, 엔터시 2025-12-01): ").strip() or "2025-12-01"
-    end_date = input("조회 종료일자 (YYYY-MM-DD, 엔터시 2025-12-07): ").strip() or "2025-12-07"
+    start_date = input("조회 시작일자 (YYYY-MM-DD, 엔터시 2025-12-01): ").strip()
+    if not start_date:
+        start_date = "2025-12-01"
+
+    end_date = input("조회 종료일자 (YYYY-MM-DD, 엔터시 2025-12-07): ").strip()
+    if not end_date:
+        end_date = "2025-12-07"
+
     limit_input = input("조회할 상위 역 개수 (엔터시 10개): ").strip()
-    limit = int(limit_input) if limit_input.isdigit() else 10
+    if limit_input.isdigit():
+        limit = int(limit_input)
+    else:
+        limit = 10
 
     sql = f"""
     SELECT 
@@ -271,8 +297,14 @@ def query_rush_hour_congestion(conn):
 
     line_name = select_line()
     day_type = select_day_type()
-    time_str = input("조회할 시간대를 입력하세요 (HH:MM 형식, 엔터시 08:30): ").strip() or "08:30"
-    time_query = (time_str + ":00") if len(time_str) == 5 else time_str
+    time_str = input("조회할 시간대를 입력하세요 (HH:MM 형식, 엔터시 08:30): ").strip()
+    if not time_str:
+        time_str = "08:30"
+    
+    if len(time_str) == 5:
+        time_query = time_str + ":00"
+    else:
+        time_query = time_str
 
     sql = f"""
     SELECT 
