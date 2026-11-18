@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>지하철 하차 동선 및 이용 현황 조회 시스템</title>
+    <!-- 부트스트랩 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Pretendard', sans-serif; }
+        .card { border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .table th { background-color: #f1f3f5; }
+    </style>
+</head>
+<body class="py-4">
+<div class="container" style="max-width: 960px;">
+
+    <!-- 상단 헤더 -->
+    <div class="text-center mb-4">
+        <h2 class="fw-bold text-primary">서울 지하철 하차 동선 및 이용 현황 조회 시스템</h2>
+        <p class="text-muted">교통약자를 위한 빠른하차 위치 안내 및 시간대별 혼잡도 분석</p>
+    </div>
+
+    <!-- 메뉴 선택 탭 버튼 -->
+    <div class="d-flex justify-content-center flex-wrap gap-2 mb-4">
+        <a href="/?menu=1" class="btn btn-outline-primary {% if menu == '1' %}active{% endif %}">1. 빠른하차 안내</a>
+        <a href="/?menu=2" class="btn btn-outline-primary {% if menu == '2' %}active{% endif %}">2. 시간대별 혼잡도</a>
+        <a href="/?menu=3" class="btn btn-outline-primary {% if menu == '3' %}active{% endif %}">3. 역 승하차 집계</a>
+        <a href="/?menu=4" class="btn btn-outline-primary {% if menu == '4' %}active{% endif %}">4. 환승역 정보</a>
+        <a href="/?menu=5" class="btn btn-outline-primary {% if menu == '5' %}active{% endif %}">5. 엘리베이터 현황</a>
+        <a href="/?menu=6" class="btn btn-outline-primary {% if menu == '6' %}active{% endif %}">6. 혼잡 역 순위</a>
+    </div>
+
+    <!-- 검색 조건 입력 폼 카드 -->
+    <div class="card p-4 mb-4">
+        <form method="POST" action="/">
+            <input type="hidden" name="menu" value="{{ menu }}">
+
+            {% if menu == '1' %}
+                <h5 class="fw-bold mb-3">1. 빠른하차 위치 안내</h5>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">역명</label>
+                        <input type="text" name="station_name" class="form-control" placeholder="예: 서울역, 한성대입구" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">호선</label>
+                        <select name="line_name" class="form-select">
+                            {% for i in range(1, 9) %}
+                                <option value="{{ i }}호선">{{ i }}호선</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">이동설비</label>
+                        <select name="facility" class="form-select">
+                            <option value="엘리베이터">엘리베이터</option>
+                            <option value="에스컬레이터">에스컬레이터</option>
+                            <option value="계단">계단</option>
+                        </select>
+                    </div>
+                </div>
+
+            {% elif menu == '2' %}
+                <h5 class="fw-bold mb-3">2. 시간대별 열차 혼잡도 조회</h5>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">역명</label>
+                        <input type="text" name="station_name" class="form-control" placeholder="예: 서울역, 한성대입구" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">호선</label>
+                        <select name="line_name" class="form-select">
+                            {% for i in range(1, 9) %}
+                                <option value="{{ i }}호선">{{ i }}호선</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">요일</label>
+                        <select name="day_type" class="form-select">
+                            <option value="평일">평일</option>
+                            <option value="토요일">토요일</option>
+                            <option value="일요일">일요일</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">운행방향</label>
+                        <select name="direction" class="form-select">
+                            <option value="상선">상선 (2호선 외: 상행)</option>
+                            <option value="하선">하선 (2호선 외: 하행)</option>
+                            <option value="내선">내선 (2호선 순환)</option>
+                            <option value="외선">외선 (2호선 순환)</option>
+                        </select>
+                    </div>
+                </div>
+
+            {% elif menu == '3' %}
+                <h5 class="fw-bold mb-3">3. 노선 및 기간별 역 승하차 이용객 집계</h5>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">호선</label>
+                        <select name="line_name" class="form-select">
+                            {% for i in range(1, 9) %}
+                                <option value="{{ i }}호선" {% if i == 2 %}selected{% endif %}>{{ i }}호선</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">조회 시작일</label>
+                        <input type="date" name="start_date" class="form-control" value="2025-12-01">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">조회 종료일</label>
+                        <input type="date" name="end_date" class="form-control" value="2025-12-07">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">상위 역 개수</label>
+                        <input type="number" name="limit" class="form-control" value="10">
+                    </div>
+                </div>
+
+            {% elif menu == '4' %}
+                <h5 class="fw-bold mb-3">4. 환승역 정보 조회</h5>
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label">역명</label>
+                        <input type="text" name="station_name" class="form-control" placeholder="예: 서울역, 동대문역사문화공원" required>
+                    </div>
+                </div>
+
+            {% elif menu == '5' %}
+                <h5 class="fw-bold mb-3">5. 노선별 이동설비(엘리베이터) 설치 현황</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">호선 선택</label>
+                        <select name="line_name" class="form-select">
+                            {% for i in range(1, 9) %}
+                                <option value="{{ i }}호선" {% if i == 7 %}selected{% endif %}>{{ i }}호선</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+            {% elif menu == '6' %}
+                <h5 class="fw-bold mb-3">6. 특정 시간대 노선 내 혼잡 역 순위 (상위 10개)</h5>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">호선</label>
+                        <select name="line_name" class="form-select">
+                            {% for i in range(1, 9) %}
+                                <option value="{{ i }}호선" {% if i == 2 %}selected{% endif %}>{{ i }}호선</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">요일</label>
+                        <select name="day_type" class="form-select">
+                            <option value="평일">평일</option>
+                            <option value="토요일">토요일</option>
+                            <option value="일요일">일요일</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">시간대 (HH:MM)</label>
+                        <input type="text" name="time_str" class="form-control" value="08:30">
+                    </div>
+                </div>
+            {% endif %}
+
+            <div class="text-end mt-4">
+                <button type="submit" class="btn btn-primary px-4 fw-bold">조회하기</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 결과 안내 메시지 -->
+    {% if message %}
+        <div class="alert alert-warning text-center">{{ message }}</div>
+    {% endif %}
+
+    <!-- 2번 혼잡도 요약 안내 박스 -->
+    {% if least_time and most_time %}
+        <div class="alert alert-info">
+            <h6 class="fw-bold mb-1">혼잡도 안내 요약</h6>
+            <div>- <strong>최저 혼잡 시간대:</strong> {{ least_time }}</div>
+            <div>- <strong>최고 혼잡 시간대:</strong> {{ most_time }}</div>
+        </div>
+    {% endif %}
+
+    <!-- 조회 결과 테이블 -->
+    {% if rows %}
+        <div class="card p-4">
+            <h5 class="fw-bold mb-3">조회 결과 (총 {{ rows|length }}건)</h5>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover text-center align-middle">
+                    <thead>
+                        <tr>
+                            {% for h in headers %}
+                                <th>{{ h }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in rows %}
+                            <tr>
+                                {% for val in r %}
+                                    <td>{{ val }}</td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+</body>
+</html>

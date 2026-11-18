@@ -17,6 +17,8 @@
 
 ```text
 📁 subway_db_project/
+├── 📄 app.py                   # Flask 웹 응용프로그램 메인
+├── 📁 templates/               # Flask 웹 HTML 템플릿 (index.html)
 ├── 📄 process.md               # 데이터 정제 및 스키마 매핑 작업 일지
 ├── 📄 schema.sql               # 데이터베이스 7개 테이블 DDL
 ├── 📄 queries.sql              # 핵심 조회 SQL 쿼리 모음
@@ -25,7 +27,7 @@
 ├── 📁 docs/                    # 세부 보고서 모음
 ├── 📁 src/
 │   ├── db.py                   # MySQL 커넥션 연결 모듈
-│   └── main.py                 # 대화형 조회 응용프로그램 메인
+│   └── main.py                 # 콘솔(CLI) 조회 응용프로그램 메인
 └── 📁 데이터 전처리/            # 원본 및 정제 데이터
 ```
 
@@ -35,7 +37,7 @@
 
 ### 1) 패키지 설치
 ```bash
-pip install pymysql tabulate pandas openpyxl
+pip install pymysql tabulate pandas openpyxl flask
 ```
 
 ### 2) 데이터베이스 구축
@@ -51,6 +53,16 @@ python load_data.py
 
 ## 4. 응용프로그램 실행
 
+본 시스템은 **웹(Flask)** 방식과 **콘솔(CLI)** 방식을 모두 지원합니다:
+
+### 방법 1. 웹 브라우저 실행 (Flask 웹 방식 - 추천)
+```bash
+python app.py
+```
+- 실행 후 웹 브라우저(Chrome 등)에서 **`http://localhost:5000`** 접속
+- 상단 탭 메뉴(1~6번) 선택 $\rightarrow$ 조건 입력 $\rightarrow$ [조회하기] 클릭
+
+### 방법 2. 터미널 콘솔 실행 (CLI 방식)
 ```bash
 python src/main.py
 ```
@@ -67,13 +79,11 @@ python src/main.py
 ---
 
 ## 5. DB 접속 설정 변경
-MySQL 접속 계정 또는 비밀번호가 다를 경우 `src/db.py` 파일의 `DB_CONFIG`를 수정합니다:
+MySQL 접속 계정 또는 비밀번호가 다를 경우 `src/db.py` 파일의 접속 변수를 수정합니다:
 ```python
-DB_CONFIG = {
-    "host": "localhost",
-    "user": "root",
-    "password": "본인_비밀번호",
-    "database": "subway_db",
-    "charset": "utf8mb4"
-}
+host = "localhost"
+port = 3306
+database = "subway_db"
+username = "root"
+password = "본인_비밀번호"
 ```
