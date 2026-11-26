@@ -1,6 +1,10 @@
 import os
-import pymysql
+import sys
 import pandas as pd
+
+# src 폴더의 db.py 연결 함수 사용
+sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+from db import get_connection
 
 if os.path.exists(os.path.join("데이터 전처리", "clean")):
     CLEAN_DIR = os.path.join("데이터 전처리", "clean")
@@ -17,13 +21,7 @@ def norm_line_name(line_str):
 
 
 def main():
-    conn = pymysql.connect(
-        host="localhost",
-        user="root",
-        password="0000",
-        database="subway_db",
-        charset="utf8mb4"
-    )
+    conn = get_connection()
     cursor = conn.cursor()
 
     try:
