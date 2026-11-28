@@ -4,7 +4,7 @@ host = "localhost"
 port = 3306
 database = "subway_db"
 username = "root"
-password = "0000"
+password = ""  # 본인 MySQL root 비밀번호를 입력하세요
 
 
 def get_connection():
