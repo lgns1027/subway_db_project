@@ -6,10 +6,7 @@ import pandas as pd
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 from db import get_connection
 
-if os.path.exists(os.path.join("데이터 전처리", "clean")):
-    CLEAN_DIR = os.path.join("데이터 전처리", "clean")
-else:
-    CLEAN_DIR = os.path.join("데이터 전처리", "데이터 전처리", "clean")
+CLEAN_DIR = os.path.join(os.path.dirname(__file__), "data")
 
 
 def norm_line_name(line_str):

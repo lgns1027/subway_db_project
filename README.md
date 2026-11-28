@@ -17,20 +17,25 @@
 
 ```text
 📁 subway_db_project/
-├── 📄 subway_db.sql          # [SQL] 테이블 생성(DDL) 및 조회 질의문 6종(DML) 통합 파일
+├── 📁 1_결과보고서/
+│   └── 📄 데이터베이스[B] 4조 프로젝트 결과보고서.docx   # [보고서] 최종 결과보고서
 │
-├── 📄 app.py                 # [웹] Flask 웹 조회 응용프로그램 메인
-├── 📁 templates/
-│   └── 📄 index.html         # [웹] 웹 UI 템플릿 화면
+├── 📁 2_발표자료/                                        # [발표] 발표 당일 사용 PPT
 │
-├── 📁 src/
-│   ├── 📄 main.py            # [콘솔] 터미널 CLI 대화형 조회 프로그램
-│   └── 📄 db.py              # [공통] MySQL 커넥션 연결 설정 모듈
+├── 📁 3_소스코드/
+│   ├── 📄 app.py                                         # [웹] Flask 웹 조회 응용프로그램
+│   ├── 📁 templates/
+│   │   └── 📄 index.html                                 # [웹] 웹 UI 화면
+│   ├── 📁 src/
+│   │   ├── 📄 main.py                                    # [콘솔] 터미널 CLI 조회 프로그램
+│   │   └── 📄 db.py                                      # [공통] MySQL 커넥션 연결 설정
+│   ├── 📄 load_data.py                                   # [적재] 전처리 데이터를 MySQL에 로드
+│   └── 📁 data/                                          # [데이터] 전처리된 정제 CSV 파일
 │
-├── 📄 load_data.py           # [적재] 전처리 CSV 데이터를 MySQL에 적재하는 스크립트
-├── 📁 데이터 전처리/clean/    # [데이터] 적재 대상 4개 정제 CSV 파일
+├── 📁 4_데이터베이스_SQL/
+│   └── 📄 subway_db.sql                                  # [SQL] 테이블 생성 및 조회 질의문 6종
 │
-└── 📄 README.md              # 프로그램 실행 안내서 (본 파일)
+└── 📄 README.md                                          # 프로그램 실행 안내서
 ```
 
 ---
@@ -44,15 +49,16 @@ pip install pymysql tabulate pandas openpyxl flask
 ```
 
 ### 2단계: 데이터베이스 및 테이블 생성 (DDL)
-MySQL Workbench에서 `subway_db.sql` 파일을 열고 **번개 모양(Execute)** 아이콘을 클릭하여 데이터베이스(`subway_db`)와 7개 테이블을 생성합니다.  
+MySQL Workbench에서 `4_데이터베이스_SQL/subway_db.sql` 파일을 열고 **번개 모양(Execute)** 아이콘을 클릭하여 데이터베이스(`subway_db`)와 7개 테이블을 생성합니다.  
 (또는 명령 프롬프트에서 아래 명령어 실행)
 ```bash
-mysql -u root -p < subway_db.sql
+mysql -u root -p < 4_데이터베이스_SQL/subway_db.sql
 ```
 
 ### 3단계: 공공데이터 적재
-터미널에서 아래 명령어를 실행하여 정제된 4개 CSV 데이터를 MySQL에 적재합니다 (총 236,140건):
+`3_소스코드` 폴더로 이동한 뒤, 아래 명령어를 실행하여 정제된 CSV 데이터를 MySQL에 적재합니다 (총 236,140건):
 ```bash
+cd 3_소스코드
 python load_data.py
 ```
 
@@ -60,10 +66,11 @@ python load_data.py
 
 ## 4. 응용프로그램 실행 방법
 
-본 시스템은 **웹(Flask)** 방식과 **터미널 콘솔(CLI)** 방식을 지원합니다.
+본 시스템은 **웹(Flask)** 방식과 **터미널 콘솔(CLI)** 방식을 지원합니다. (`3_소스코드` 폴더 내에서 실행)
 
 ### 방법 1. 웹 브라우저 실행 (Flask 웹 방식)
 ```bash
+cd 3_소스코드
 python app.py
 ```
 1. 위 명령어를 실행하면 로컬 웹 서버가 구동됩니다.
@@ -72,6 +79,7 @@ python app.py
 
 ### 방법 2. 터미널 콘솔 실행 (CLI 방식)
 ```bash
+cd 3_소스코드
 python src/main.py
 ```
 1. 터미널 화면에 표시되는 메뉴 번호(1~6)를 선택합니다.
@@ -93,10 +101,10 @@ python src/main.py
 
 ## 6. DB 접속 환경 설정 변경 안내
 
-MySQL 서버의 비밀번호나 접속 정보가 기본값(`root` / `0000`)과 다를 경우, **`src/db.py` 파일의 접속 변수만 변경**하시면 모든 프로그램(`app.py`, `src/main.py`, `load_data.py`)에 적용됩니다:
+MySQL 서버의 비밀번호나 접속 정보가 기본값(`root` / `0000`)과 다를 경우, **`3_소스코드/src/db.py` 파일의 접속 변수만 변경**하시면 모든 프로그램(`app.py`, `src/main.py`, `load_data.py`)에 적용됩니다:
 
 ```python
-# src/db.py
+# 3_소스코드/src/db.py
 host = "localhost"
 port = 3306
 database = "subway_db"
