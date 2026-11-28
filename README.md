@@ -17,12 +17,12 @@
 
 ```text
 📁 subway_db_project/
-├── 📁 1_report/
+├── 📁 report/
 │   └── 📄 데이터베이스[B] 4조 프로젝트 결과보고서.docx   # 결과보고서
 │
-├── 📁 2_presentation/                                    # 발표 자료
+├── 📁 presentation/                                      # 발표 자료
 │
-├── 📁 3_source/
+├── 📁 source/
 │   ├── 📄 app.py                                         # Flask 웹 조회 프로그램
 │   ├── 📁 templates/
 │   │   └── 📄 index.html                                 # 웹 UI 화면
@@ -32,7 +32,7 @@
 │   ├── 📄 load_data.py                                   # CSV 데이터 적재 스크립트
 │   └── 📁 data/                                          # 전처리 CSV 파일
 │
-├── 📁 4_sql/
+├── 📁 sql/
 │   ├── 📄 subway_db_data.sql                             # 테이블 구조 및 데이터 복원 SQL
 │   └── 📄 subway_db.sql                                  # 테이블 생성 및 조회 질의문
 │
@@ -51,21 +51,21 @@ pip install pymysql tabulate pandas openpyxl flask
 ### 2단계: 데이터베이스 복원
 명령 프롬프트에서 아래 명령어를 실행하여 데이터베이스(`subway_db`), 7개 테이블, 데이터를 복원합니다.
 ```bash
-mysql -u root -p < 4_sql/subway_db_data.sql
+mysql -u root -p < sql/subway_db_data.sql
 ```
-또는 MySQL Workbench에서 `4_sql/subway_db_data.sql` 파일을 열어 실행합니다.
+또는 MySQL Workbench에서 `sql/subway_db_data.sql` 파일을 열어 실행합니다.
 
-테이블 생성 후 CSV 파일로 직접 적재할 경우 `4_sql/subway_db.sql`의 테이블 생성문을 실행한 뒤 아래 명령어를 실행합니다.
+테이블 생성 후 CSV 파일로 직접 적재할 경우 `sql/subway_db.sql`의 테이블 생성문을 실행한 뒤 아래 명령어를 실행합니다.
 ```bash
-cd 3_source
+cd source
 python load_data.py
 ```
 
 ### 3단계: MySQL 연결 설정
-`3_source/src/db.py` 파일을 열어 MySQL 접속 정보를 입력합니다.
+`source/src/db.py` 파일을 열어 MySQL 접속 정보를 입력합니다.
 
 ```python
-# 3_source/src/db.py
+# source/src/db.py
 host = "localhost"
 port = 3306
 database = "subway_db"
@@ -77,11 +77,11 @@ password = "MySQL_비밀번호"
 
 ## 4. 응용프로그램 실행
 
-`3_source` 폴더로 이동하여 실행합니다.
+`source` 폴더로 이동하여 실행합니다.
 
 ### 방법 1. 웹 브라우저 실행
 ```bash
-cd 3_source
+cd source
 python app.py
 ```
 1. 웹 서버 실행 후 브라우저에서 `http://localhost:5000` 주소로 접속합니다.
@@ -89,7 +89,7 @@ python app.py
 
 ### 방법 2. 터미널 실행
 ```bash
-cd 3_source
+cd source
 python src/main.py
 ```
 1. 메뉴 번호(1~6)를 선택합니다.
